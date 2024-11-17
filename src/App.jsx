@@ -1,20 +1,22 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import PersonList from "./components/PersonList";
-import noteServices from "./services/notes";
+import phonebookServices from "./services/phonebook";
 import PersonForm from "./components/PersonForm";
 
 const App = () => {
-  const [persons, setPersons] = useState([
-    { name: "Arto Hellas", number: "040-123456", id: 1 },
-    { name: "Ada Lovelace", number: "39-44-5323523", id: 2 },
-    { name: "Dan Abramov", number: "12-43-234345", id: 3 },
-    { name: "Mary Poppendieck", number: "39-23-6423122", id: 4 },
-  ]);
+  const [persons, setPersons] = useState([]);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [filterName, setFilterName] = useState("");
 
+  const baseURL = "http://localhost:3001/persons/";
+
+  useEffect(() => {
+    phonebookServices.getAll().then((response) => {
+      setPersons(response);
+    });
+  }, []);
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -32,10 +34,11 @@ const App = () => {
     const newContact = {
       name: newName,
       number: newNumber,
-      id: persons.length + 1, // Generar un id único
     };
 
-    setPersons([...persons, newContact]);
+    phonebookServices.createPhonebook(newContact).then((response) => {
+      setPersons([...persons, response]);
+    });
 
     // Limpiar campos del formulario
     setNewName("");
@@ -47,6 +50,36 @@ const App = () => {
     if (name === "name") setNewName(value);
     if (name === "number") setNewNumber(value);
   };
+
+
+
+  const  deletePerson = (id, name) => {
+
+
+    // Confirmar la acción con el usuario
+    const confirmDelete = window.confirm(`¿Estás seguro de que deseas eliminar a ${name}?`);
+  
+    if (!confirmDelete) {
+      return; // Si el usuario cancela, no se ejecuta la eliminación
+    }
+  
+    // Realizar la petición DELETE
+    axios
+      .delete(`${baseURL}?id=${id}`)
+      .then(() => {
+        // Actualizar la lista local de contactos
+        const updatedContacts = persons.filter((person) => person.id !== id);
+        setPersons(updatedContacts);
+  
+        console.log(`Contacto ${name} eliminado con éxito.`);
+      })
+      .catch((error) => {
+        console.error("Error eliminando el contacto:", error);
+        alert(`Hubo un problema al intentar eliminar a ${name}. Por favor, inténtalo de nuevo.`);
+      });
+  };
+
+
 
   return (
     <div>
@@ -66,7 +99,11 @@ const App = () => {
         values={{ newName, newNumber }}
       />
       <h2>Numbers</h2>
-      <PersonList persons={persons} filterName={filterName} />
+      <PersonList
+        persons={persons}
+        filterName={filterName}
+        deletePerson={deletePerson}
+      />
     </div>
   );
 };
